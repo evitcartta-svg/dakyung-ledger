@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>다경 사업장부</title>
+<meta name="theme-color" content="#1f7a4d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="사업장부">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&display=swap">
+<style>
+/* 레이아웃: 휴대폰 한 줄 기둥. 맨 위 큰 숫자 하나(남은 돈) → 작은 숫자 묶음 → 이번 달 기록 목록. 아래 고정 '추가' 버튼 */
+:root{
+  --bg:#f2f5f3; --card:#ffffff; --fg:#17201b; --sub:#6b7770; --line:#e3e9e5;
+  --accent:#1f7a4d; --accent-soft:#e3f2ea; --in:#1f7a4d; --out:#d1453b; --wait:#b7791f;
+  --font:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --r:20px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1512; --card:#18201c; --fg:#eef3f0; --sub:#93a199; --line:#26302b;
+  --accent:#4cc38a; --accent-soft:#1d3329; --in:#4cc38a; --out:#ff7b70; --wait:#e0a64a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1512; --card:#18201c; --fg:#eef3f0; --sub:#93a199; --line:#26302b;
+  --accent:#4cc38a; --accent-soft:#1d3329; --in:#4cc38a; --out:#ff7b70; --wait:#e0a64a; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--font);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+.wrap{max-width:480px;margin:0 auto;padding-inline:16px;padding-block:20px 120px;display:flex;flex-direction:column;gap:14px}
+button{font:inherit;color:inherit;cursor:pointer;border:0;background:none}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.brand{font-weight:700;font-size:15px;color:var(--sub)}
+.month{display:flex;align-items:center;gap:4px;font-weight:700;font-size:17px}
+.month button{width:36px;height:36px;border-radius:50%;font-size:18px;color:var(--sub)}
+.month button:hover{background:var(--line)}
+
+.hero{background:var(--card);border-radius:var(--r);padding:24px 22px;display:flex;flex-direction:column;gap:6px}
+.hero .label{color:var(--sub);font-size:15px;font-weight:500}
+.hero .big{font-size:40px;font-weight:800;letter-spacing:-.02em;line-height:1.15}
+.hero .big.minus{color:var(--out)}
+.hero .split{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+.hero .split > div{background:var(--bg);border-radius:14px;padding:12px 14px}
+.split .k{font-size:13px;color:var(--sub)}
+.split .v{font-size:19px;font-weight:700}
+
+.forecast{background:var(--card);border-radius:var(--r);padding:20px 22px;display:flex;flex-direction:column;gap:10px}
+.row{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.row .k{color:var(--sub)}
+.row .v{font-weight:700;font-size:17px}
+.forecast hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+.forecast .final .k{color:var(--fg);font-weight:700}
+.forecast .final .v{font-size:22px;color:var(--accent)}
+.forecast .final .v.minus{color:var(--out)}
+.say{background:var(--accent-soft);color:var(--fg);border-radius:14px;padding:12px 14px;font-size:15px;font-weight:500}
+
+.list{background:var(--card);border-radius:var(--r);padding:18px 8px 8px}
+.list h2{font-size:17px;margin:0 14px 8px}
+.item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px}
+.item:hover{background:var(--bg)}
+.dot{width:40px;height:40px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:14px;font-weight:700}
+.dot.in{background:var(--accent-soft);color:var(--in)}
+.dot.out{background:color-mix(in srgb,var(--out) 14%,transparent);color:var(--out)}
+.item .mid{flex:1;min-width:0}
+.item .t{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.item .d{display:block;font-size:13px;color:var(--sub)}
+.item .amt{font-weight:700;text-align:right}
+.amt.in{color:var(--in)}
+.pill{display:inline-block;font-size:12px;font-weight:700;color:var(--wait);background:color-mix(in srgb,var(--wait) 15%,transparent);border-radius:99px;padding:1px 8px;margin-left:4px}
+.empty{color:var(--sub);text-align:center;padding:28px 16px 32px;font-size:15px}
+.empty b{color:var(--fg)}
+
+.fab{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(14px + env(safe-area-inset-bottom,0px));background:linear-gradient(transparent,var(--bg) 35%);display:flex;justify-content:center}
+.fab button{width:100%;max-width:448px;height:58px;border-radius:16px;background:var(--accent);color:#fff;font-size:18px;font-weight:700}
+.note{font-size:13px;color:var(--sub);text-align:center}
+
+/* 추가·상세 시트 */
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;justify-content:center;z-index:10}
+.sheet{background:var(--card);width:100%;max-width:480px;border-radius:24px 24px 0 0;padding:22px 20px calc(20px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:16px;max-height:92vh;overflow:auto}
+.sheet h3{margin:0;font-size:20px}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--bg);border-radius:14px;padding:4px;gap:4px}
+.seg button{height:46px;border-radius:11px;font-weight:700;color:var(--sub);font-size:16px}
+.seg button.on{background:var(--card);color:var(--fg);box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.field label{display:block;font-size:14px;color:var(--sub);margin-bottom:6px}
+.field input{width:100%;height:56px;border:2px solid var(--line);border-radius:14px;padding:0 16px;font:inherit;font-size:18px;background:var(--card);color:var(--fg)}
+.field input:focus{border-color:var(--accent);outline:none}
+.preview{font-size:15px;color:var(--sub);min-height:22px}
+.preview b{color:var(--fg)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{padding:9px 14px;border-radius:99px;background:var(--bg);font-size:15px;font-weight:500}
+.chips button.on{background:var(--accent);color:#fff}
+.btn{height:56px;border-radius:14px;background:var(--accent);color:#fff;font-size:17px;font-weight:700;width:100%}
+.btn:disabled{opacity:.4;cursor:default}
+.btn.ghost{background:var(--bg);color:var(--fg)}
+.btn.danger{background:transparent;color:var(--out);height:44px}
+.err{color:var(--out);font-size:14px}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:up .22s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
+html,body{margin:0}
+:root{padding-top:env(safe-area-inset-top,0px)}
+.brand{display:flex;align-items:center;gap:8px}
+.brand img{width:26px;height:26px;border-radius:7px}
+.gear{width:36px;height:36px;border-radius:50%;font-size:18px;color:var(--sub);display:grid;place-items:center}
+.gear:hover{background:var(--line)}
+.login{background:var(--card);border-radius:var(--r);padding:26px 22px;display:flex;flex-direction:column;gap:14px}
+.login h1{margin:0;font-size:22px}
+.login p{margin:0;color:var(--sub);font-size:15px}
+textarea{width:100%;min-height:110px;border:2px solid var(--line);border-radius:14px;padding:12px 14px;font:inherit;font-size:14px;background:var(--card);color:var(--fg)}
+.okmsg{color:var(--accent);font-size:14px;font-weight:500}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="loginWrap" hidden>
+  <section class="login">
+    <h1>다경 사업장부</h1>
+    <p>처음 한 번만 로그인하면 휴대폰·노트북에서 같은 기록을 볼 수 있어요. 내 기록은 나만 볼 수 있어요.</p>
+    <div class="field"><label for="email">이메일</label><input id="email" type="email" autocomplete="email" placeholder="예: evitcartta@gmail.com"></div>
+    <div class="field"><label for="pw">비밀번호 (6자 이상)</label><input id="pw" type="password" autocomplete="current-password"></div>
+    <div class="err" id="loginErr"></div>
+    <button class="btn" id="loginBtn">로그인</button>
+    <button class="btn ghost" id="signupBtn">처음이에요 (가입하기)</button>
+  </section>
+</div>
+
+<div class="wrap" id="appWrap">
+  <header>
+    <span class="brand"><img src="icon-192.png" alt="">사업장부</span>
+    <div class="month">
+      <button id="prev" aria-label="이전 달">‹</button>
+      <span id="monthLabel" class="num">10월</span>
+      <button id="next" aria-label="다음 달">›</button>
+      <button class="gear" id="gear" aria-label="설정">⚙</button>
+    </div>
+  </header>
+
+  <section class="hero" aria-label="이번 달 남은 돈">
+    <span class="label" id="heroLabel">이번 달 사업해서 남은 돈</span>
+    <span class="big num" id="profit">0원</span>
+    <div class="split">
+      <div><div class="k">매출</div><div class="v num" id="income">0원</div></div>
+      <div><div class="k">비용</div><div class="v num" id="cost">0원</div></div>
+    </div>
+  </section>
+
+  <section class="forecast" aria-label="이번 달 예상">
+    <div class="row"><span class="k">아직 받을 돈</span><span class="v num" id="toGet">0원</span></div>
+    <div class="row"><span class="k">앞으로 나갈 비용</span><span class="v num" id="toPay">0원</span></div>
+    <hr>
+    <div class="row final"><span class="k">이번 달 최종 예상</span><span class="v num" id="final">0원</span></div>
+    <div class="say" id="say">기록을 추가하면 이번 달에 얼마 남을지 알려드려요.</div>
+  </section>
+
+  <section class="list">
+    <h2>이번 달 기록</h2>
+    <div id="items"></div>
+  </section>
+  <p class="note" id="syncNote"></p>
+</div>
+
+<div class="fab" id="fab"><button id="addBtn">+ 수입·비용 추가</button></div>
+
+<div class="sheet-bg" id="sheetBg" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" id="sheet"></div>
+</div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.2/dist/umd/supabase.js"></script>
+<script>
+(() => {
+const INCOME_CATS = ["취업논술","대학원 글쓰기","개인 과외","학원 강의료","전자책","그룹수업","공공기관 강의","기타 수입"];
+const COST_CATS = ["광고비","플랫폼 수수료","AI 구독료","수업 자료비","기타 비용"];
+const KEYWORDS = [
+  ["취업논술",/취업|논술/],["대학원 글쓰기",/대학원/],["개인 과외",/과외/],["학원 강의료",/학원/],
+  ["전자책",/전자책|이북|크몽/],["그룹수업",/그룹|단체/],["공공기관 강의",/공공|도서관|구청|복지관|시민대학|센터/],
+  ["광고비",/광고|홍보|부스트/],["플랫폼 수수료",/수수료|숨고|플랫폼|리틀리/],
+  ["AI 구독료",/AI|ai|GPT|gpt|챗지피티|클로드|Claude|제미나이|구독/],["수업 자료비",/자료|교재|책|인쇄|복사/]
+];
+
+// ---------- 금액 읽기: "30만원", "3만 5천", "1,500,000", "2.5만" ----------
+function parseAmount(s){
+  s = String(s||"").replace(/[,\s원₩]/g,"");
+  const m = s.match(/^(\d+(?:\.\d+)?)(만)?(?:(\d+)(천)?)?/);
+  if(!m) return {amount:0,rest:s};
+  let n = parseFloat(m[1]);
+  if(m[2]) n *= 10000;
+  if(m[3]) n += parseFloat(m[3]) * (m[4] ? 1000 : 1);
+  else if(!m[2]){ const c = s.slice(m[0].length).match(/^천/); if(c) n*=1000; }
+  return {amount:Math.round(n)};
+}
+function splitInput(text){
+  text = String(text||"").trim();
+  const m = text.match(/^\s*([\d.,]+\s*(?:만|천)?\s*(?:[\d,]+\s*천?)?\s*원?)\s*[\/·,:-]?\s*(.*)$/);
+  if(!m) return {amount:0,memo:text};
+  return {amount:parseAmount(m[1]).amount, memo:m[2].trim()};
+}
+function guessCat(memo,type){
+  const list = type==="in"?INCOME_CATS:COST_CATS;
+  for(const [cat,re] of KEYWORDS) if(list.includes(cat) && re.test(memo)) return cat;
+  return null;
+}
+
+// ---------- 표시 ----------
+const won = n => (n<0?"-":"") + Math.abs(Math.round(n)).toLocaleString("ko-KR") + "원";
+function manwon(n){ const a=Math.abs(n); if(a>=10000){const v=Math.round(a/1000)/10; return (n<0?"-":"")+(v%1?v:v.toFixed(0))+"만원";} return won(n); }
+const pad = n => String(n).padStart(2,"0");
+const todayStr = () => { const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+const monthKey = d => d.slice(0,7);
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+// ---------- 데이터 ----------
+let months = {};           // { "2026-10": [items] }
+let view = todayStr().slice(0,7);
+let store = null;          // {save(month, items)}
+
+function itemsOf(m){ return months[m] || []; }
+function calc(m){
+  const r={income:0,cost:0,toGet:0,toPay:0};
+  for(const it of itemsOf(m)){
+    if(it.type==="in"){ it.done ? r.income+=it.amount : r.toGet+=it.amount; }
+    else { it.done ? r.cost+=it.amount : r.toPay+=it.amount; }
+  }
+  r.profit = r.income - r.cost;
+  r.final = r.profit + r.toGet - r.toPay;
+  return r;
+}
+
+function render(){
+  const [y,mo] = view.split("-").map(Number);
+  const isNow = view===todayStr().slice(0,7);
+  document.getElementById("monthLabel").textContent = (y!==new Date().getFullYear()?y+"년 ":"") + mo + "월";
+  document.getElementById("heroLabel").textContent = (isNow?"이번 달":mo+"월에") + " 사업해서 남은 돈";
+  const r = calc(view);
+  const p = document.getElementById("profit");
+  p.textContent = won(r.profit); p.classList.toggle("minus", r.profit<0);
+  document.getElementById("income").textContent = won(r.income);
+  document.getElementById("cost").textContent = won(r.cost);
+  document.getElementById("toGet").textContent = "+" + won(r.toGet);
+  document.getElementById("toPay").textContent = "-" + won(r.toPay);
+  const f = document.getElementById("final");
+  f.textContent = won(r.final); f.classList.toggle("minus", r.final<0);
+
+  const items = itemsOf(view);
+  let say;
+  if(!items.length) say = "기록을 추가하면 이번 달에 얼마 남을지 알려드려요.";
+  else if(r.toGet===0 && r.toPay===0) say = r.profit>=0 ? `지금까지 사업으로 ${manwon(r.profit)} 남았어요.` : `지금은 쓴 돈이 ${manwon(-r.profit)} 더 많아요.`;
+  else if(r.final>=0) say = `받을 돈과 나갈 돈까지 합치면 이번 달 약 ${manwon(r.final)}이 남을 거예요.`;
+  else say = `예정된 비용까지 합치면 이번 달 약 ${manwon(-r.final)}이 모자랄 수 있어요.`;
+  document.getElementById("say").textContent = say;
+
+  const box = document.getElementById("items");
+  if(!items.length){
+    box.innerHTML = `<div class="empty">아직 기록이 없어요.<br>아래 <b>+ 수입·비용 추가</b>를 누르고<br><b>30만원 취업논술 수업료</b>처럼 적어 보세요.</div>`;
+    return;
+  }
+  const sorted = [...items].sort((a,b)=> (a.done===b.done?0:a.done?1:-1) || b.date.localeCompare(a.date) || b.created-a.created);
+  box.innerHTML = sorted.map(it=>{
+    const d = it.date.slice(5).replace("-",".");
+    return `<button class="item" data-id="${it.id}" style="width:100%;text-align:left">
+      <span class="dot ${it.type}">${it.type==="in"?"입":"출"}</span>
+      <span class="mid"><span class="t">${esc(it.memo||it.cat)}</span>
+        <span class="d">${d} · ${esc(it.cat)}${it.done?"":`<span class="pill">${it.type==="in"?"받을 돈":"나갈 돈"}</span>`}</span></span>
+      <span class="amt num ${it.type==="in"?"in":""}">${it.type==="in"?"+":"-"}${won(it.amount)}</span>
+    </button>`;
+  }).join("");
+  box.querySelectorAll(".item").forEach(b=>b.onclick=()=>{ const it=itemsOf(view).find(x=>x.id===b.dataset.id); if(it) openAdd(it); });
+}
+
+async function saveMonth(m){
+  try{ await store.save(m, itemsOf(m)); }
+  catch(e){ toastErr("저장이 안 됐어요. 인터넷 연결을 확인하고 다시 해 주세요."); }
+}
+function toastErr(msg){ const n=document.getElementById("syncNote"); n.textContent=msg; n.style.color="var(--out)"; }
+
+// ---------- 추가 시트 ----------
+const bg = document.getElementById("sheetBg"), sheet = document.getElementById("sheet");
+function closeSheet(){ bg.hidden = true; sheet.innerHTML=""; }
+bg.addEventListener("click", e=>{ if(e.target===bg) closeSheet(); });
+document.addEventListener("keydown", e=>{ if(e.key==="Escape" && !bg.hidden) closeSheet(); });
+
+function openAdd(edit){
+  const st = edit ? {type:edit.type, done:edit.done, cat:edit.cat, catTouched:true, date:edit.date}
+                  : {type:"in", done:true, cat:null, catTouched:false, date:todayStr()};
+  const fmt = n => n%10000===0 ? (n/10000)+"만원" : n.toLocaleString("ko-KR")+"원";
+  sheet.innerHTML = `
+    <h3 id="sheetTitle">${edit?"기록 고치기":"무엇을 기록할까요?"}</h3>
+    <div class="seg" id="typeSeg"><button data-v="in" class="${st.type==="in"?"on":""}">들어온 돈 (매출)</button><button data-v="out" class="${st.type==="out"?"on":""}">나간 돈 (비용)</button></div>
+    <div class="field"><label for="quick">금액과 내용</label>
+      <input id="quick" autocomplete="off" placeholder="${st.type==="in"?"예: 30만원 취업논술 수업료":"예: 3만원 네이버 광고"}" value="${edit?esc(fmt(edit.amount)+(edit.memo?" "+edit.memo:"")):""}"></div>
+    <div class="preview" id="pv"></div>
+    <div><div class="field"><label>종류</label></div><div class="chips" id="cats"></div></div>
+    <div class="seg" id="doneSeg"><button data-v="1" class="on">이미 받았어요</button><button data-v="0">아직 안 받았어요</button></div>
+    <div class="field"><label for="date" id="dateLabel">날짜</label><input type="date" id="date" value="${st.date}"></div>
+    <div class="err" id="err"></div>
+    <button class="btn" id="save" disabled>저장</button>
+    ${edit?`<button class="btn danger" id="del">이 기록 지우기</button>`:""}`;
+  bg.hidden = false;
+  const q = sheet.querySelector("#quick"), pv = sheet.querySelector("#pv"), save = sheet.querySelector("#save");
+  setTimeout(()=>{ q.focus(); if(edit) q.setSelectionRange(q.value.length,q.value.length); },50);
+
+  function drawCats(){
+    const list = st.type==="in"?INCOME_CATS:COST_CATS;
+    sheet.querySelector("#cats").innerHTML = list.map(c=>`<button type="button" data-c="${c}" class="${c===st.cat?"on":""}">${c}</button>`).join("");
+    sheet.querySelectorAll("#cats button").forEach(b=>b.onclick=()=>{ st.cat=b.dataset.c; st.catTouched=true; drawCats(); update(); });
+  }
+  function drawDone(){
+    const [a,b] = sheet.querySelectorAll("#doneSeg button");
+    a.textContent = st.type==="in"?"이미 받았어요":"이미 냈어요";
+    b.textContent = st.type==="in"?"아직 안 받았어요":"아직 안 냈어요";
+    a.classList.toggle("on",st.done); b.classList.toggle("on",!st.done);
+    sheet.querySelector("#dateLabel").textContent = st.done ? "날짜" : (st.type==="in"?"받을 날짜":"나갈 날짜");
+  }
+  function update(){
+    const {amount, memo} = splitInput(q.value);
+    if(!st.catTouched){ const g = guessCat(memo, st.type); if(g!==st.cat){ st.cat=g; drawCats(); } }
+    pv.innerHTML = amount ? `<b>${won(amount)}</b>${memo?` · ${esc(memo)}`:""}` : (q.value ? "금액을 맨 앞에 적어 주세요. 예: 30만원" : "");
+    save.disabled = !(amount>0 && st.cat);
+    sheet.querySelector("#err").textContent = amount>0 && !st.cat ? "종류를 하나 골라 주세요." : "";
+  }
+  sheet.querySelectorAll("#typeSeg button").forEach(b=>b.onclick=()=>{
+    st.type=b.dataset.v; st.catTouched=false; st.cat=null;
+    sheet.querySelectorAll("#typeSeg button").forEach(x=>x.classList.toggle("on",x===b));
+    q.placeholder = st.type==="in"?"예: 30만원 취업논술 수업료":"예: 3만원 네이버 광고";
+    drawCats(); drawDone(); update();
+  });
+  sheet.querySelectorAll("#doneSeg button").forEach(b=>b.onclick=()=>{ st.done=b.dataset.v==="1"; drawDone(); });
+  q.addEventListener("input",update);
+  q.addEventListener("keydown",e=>{ if(e.key==="Enter" && !save.disabled) save.click(); });
+  save.onclick = async ()=>{
+    const {amount, memo} = splitInput(q.value);
+    const date = sheet.querySelector("#date").value || todayStr();
+    const it = {id: edit?edit.id:Date.now().toString(36)+Math.random().toString(36).slice(2,6), type:st.type, amount, memo, cat:st.cat, done:st.done, date, created: edit?edit.created:Date.now()};
+    const m = monthKey(date);
+    const oldM = edit ? monthKey(edit.date) : null;
+    if(edit) months[oldM] = itemsOf(oldM).filter(x=>x.id!==edit.id);
+    months[m] = [...itemsOf(m), it];
+    view = m; closeSheet(); render();
+    if(edit && oldM!==m) await saveMonth(oldM);
+    await saveMonth(m);
+  };
+  const del = sheet.querySelector("#del");
+  if(del) del.onclick = async ()=>{
+    if(del.dataset.sure!=="1"){ del.dataset.sure="1"; del.textContent="한 번 더 누르면 지워져요"; return; }
+    const m = monthKey(edit.date);
+    months[m] = itemsOf(m).filter(x=>x.id!==edit.id);
+    closeSheet(); render(); await saveMonth(m);
+  };
+  drawCats(); drawDone(); update();
+}
+
+// ---------- 달 이동 ----------
+function shift(n){ const [y,m]=view.split("-").map(Number); const d=new Date(y,m-1+n,1); view=`${d.getFullYear()}-${pad(d.getMonth()+1)}`; render(); }
+document.getElementById("prev").onclick=()=>shift(-1);
+document.getElementById("next").onclick=()=>shift(1);
+document.getElementById("addBtn").onclick=()=>openAdd();
+
+// ---------- 저장소: Supabase(로그인, 모든 기기) / 연결 전엔 이 기기 ----------
+const LS="dakyung-ledger-local";
+const note = t => { const n=document.getElementById("syncNote"); n.textContent=t; n.style.color=""; };
+const local = {
+  load(){ try{ return JSON.parse(localStorage.getItem(LS)||"{}"); }catch(e){ return {}; } },
+  async saveAll(){ try{ localStorage.setItem(LS, JSON.stringify(months)); }catch(e){} }
+};
+const CFG = window.LEDGER_CONFIG || {};
+const ready = CFG.url && CFG.key && !/여기/.test(CFG.key) && window.supabase;
+let sb = null, uid = null, email = "";
+
+function showApp(on){
+  document.getElementById("loginWrap").hidden = on;
+  document.getElementById("appWrap").hidden = !on;
+  document.getElementById("fab").hidden = !on;
+}
+const remote = {
+  async load(){
+    const {data,error} = await sb.from("ledger").select("data").eq("user_id",uid).maybeSingle();
+    if(error) throw error;
+    return (data && data.data && data.data.months) || {};
+  },
+  async saveAll(){
+    const {error} = await sb.from("ledger").upsert({user_id:uid, data:{months}, updated_at:new Date().toISOString()});
+    if(error) throw error;
+  }
+};
+store = { save: async ()=> (uid ? remote : local).saveAll() };
+
+async function refresh(){
+  if(!uid) return;
+  try{ months = await remote.load(); render(); note("휴대폰·노트북 어디서 열어도 같은 기록이 보여요. (나만 볼 수 있어요)"); }
+  catch(e){ toastErr("기록을 불러오지 못했어요. 인터넷 연결을 확인해 주세요."); }
+}
+async function onSession(session){
+  if(session && session.user){
+    uid = session.user.id; email = session.user.email || "";
+    showApp(true);
+    await refresh();
+    // 이 기기에만 있던 기록 합치기
+    const loc = local.load(); let moved = false;
+    for(const m of Object.keys(loc)){
+      const ids = new Set(itemsOf(m).map(x=>x.id));
+      const extra = (loc[m]||[]).filter(x=>!ids.has(x.id));
+      if(extra.length){ months[m] = [...itemsOf(m), ...extra]; moved = true; }
+    }
+    if(moved){ try{ await remote.saveAll(); localStorage.removeItem(LS); render(); }catch(e){} }
+  } else {
+    uid = null; showApp(false);
+  }
+}
+
+if(ready){
+  sb = window.supabase.createClient(CFG.url, CFG.key, {auth:{persistSession:true, autoRefreshToken:true}});
+  showApp(false);
+  sb.auth.getSession().then(({data})=>onSession(data.session));
+  sb.auth.onAuthStateChange((ev, session)=>{ if(ev==="SIGNED_IN"||ev==="SIGNED_OUT") onSession(session); });
+  document.addEventListener("visibilitychange", ()=>{ if(document.visibilityState==="visible") refresh(); });
+} else {
+  months = local.load(); render(); showApp(true);
+  note("아직 연결 전이라 이 기기에만 저장돼요.");
+}
+
+// ---------- 로그인 ----------
+const loginErr = document.getElementById("loginErr");
+function creds(){
+  const e = document.getElementById("email").value.trim(), p = document.getElementById("pw").value;
+  if(!/^\S+@\S+\.\S+$/.test(e)){ loginErr.textContent="이메일을 다시 확인해 주세요."; return null; }
+  if(p.length<6){ loginErr.textContent="비밀번호는 6자 이상이에요."; return null; }
+  loginErr.textContent=""; return {email:e, password:p};
+}
+function niceErr(error){
+  const m = (error && error.message) || "";
+  if(/Invalid login/i.test(m)) return "이메일이나 비밀번호가 맞지 않아요. 처음이면 '가입하기'를 눌러 주세요.";
+  if(/already registered/i.test(m)) return "이미 가입된 이메일이에요. '로그인'을 눌러 주세요.";
+  if(/confirm/i.test(m)) return "이메일 확인이 필요해요. 메일함에서 확인 버튼을 눌러 주세요.";
+  return "잠시 후 다시 해 주세요. ("+m+")";
+}
+document.getElementById("loginBtn").onclick = async ()=>{
+  const c = creds(); if(!c) return;
+  const {error} = await sb.auth.signInWithPassword(c);
+  if(error) loginErr.textContent = niceErr(error);
+};
+document.getElementById("signupBtn").onclick = async ()=>{
+  const c = creds(); if(!c) return;
+  const {data, error} = await sb.auth.signUp(c);
+  if(error) loginErr.textContent = niceErr(error);
+  else if(!data.session) loginErr.textContent = "메일함에서 확인 버튼을 누른 뒤 '로그인'을 눌러 주세요.";
+};
+document.getElementById("pw").addEventListener("keydown", e=>{ if(e.key==="Enter") document.getElementById("loginBtn").click(); });
+
+// ---------- 설정 ----------
+document.getElementById("gear").onclick = ()=>{
+  sheet.innerHTML = `
+    <h3 id="sheetTitle">설정</h3>
+    ${uid?`<div class="row"><span class="k">로그인</span><span class="v" style="font-size:15px">${esc(email)}</span></div>`:""}
+    <div class="field"><label for="imp">예전 장부(Claude)에서 가져오기</label>
+      <textarea id="imp" placeholder="예전 장부의 '옮기기 코드'를 여기에 붙여넣어 주세요"></textarea></div>
+    <div class="err" id="impMsg"></div>
+    <button class="btn" id="impBtn">가져오기</button>
+    ${uid?`<button class="btn ghost" id="logout">로그아웃</button>`:""}
+    <button class="btn ghost" id="closeSet">닫기</button>`;
+  bg.hidden = false;
+  sheet.querySelector("#closeSet").onclick = closeSheet;
+  const lo = sheet.querySelector("#logout"); if(lo) lo.onclick = async ()=>{ closeSheet(); await sb.auth.signOut(); };
+  sheet.querySelector("#impBtn").onclick = async ()=>{
+    const msg = sheet.querySelector("#impMsg");
+    let data;
+    try{ data = JSON.parse(decodeURIComponent(escape(atob(sheet.querySelector("#imp").value.trim())))); }
+    catch(e){ msg.textContent="코드가 올바르지 않아요. 전체를 그대로 복사해서 붙여넣어 주세요."; return; }
+    let n=0;
+    for(const m of Object.keys(data||{})){
+      if(!/^\d{4}-\d{2}$/.test(m) || !Array.isArray(data[m])) continue;
+      const ids = new Set(itemsOf(m).map(x=>x.id));
+      const extra = data[m].filter(x=>x && x.id && !ids.has(x.id));
+      n += extra.length; months[m] = [...itemsOf(m), ...extra];
+    }
+    await store.save(); render();
+    msg.className="okmsg"; msg.textContent = n ? `기록 ${n}개를 가져왔어요.` : "새로 가져올 기록이 없어요. (이미 다 있어요)";
+  };
+};
+
+// ---------- 앱 설치용 ----------
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(()=>{});
+})();
+</script>
+</body>
+</html>
